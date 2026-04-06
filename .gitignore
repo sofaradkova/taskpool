@@ -27,3 +27,9 @@ packages/db/node_modules/.prisma/
 # Editor
 .vscode/
 .idea/
+
+# Claude Code
+.claude/
+
+# TypeScript incremental build info
+*.tsbuildinfo
