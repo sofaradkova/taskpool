@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  createdAt    DateTime      @default(now())
+  expiresAt    DateTime?
+  tasks        Task[]
+  participants Participant[]
+  eventLog     EventLog[]
+}
+
+model Task {
+  id             String       @id @default(cuid())
+  roomId         String
+  title          String
+  description    String?
+  status         TaskStatus   @default(UNCLAIMED)
+  version        Int          @default(0) // optimistic concurrency
+  claimedBy      String? // Participant.id
+  leaseExpiresAt DateTime? // null when not claimed
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  room           Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  claimant       Participant? @relation(fields: [claimedBy], references: [id])
+  eventLog       EventLog[]
+
+  @@index([roomId])
+  @@index([claimedBy])
+}
+
+enum TaskStatus {
+  UNCLAIMED
+  CLAIMED
+  IN_PROGRESS
+  DONE
+}
+
+model Participant {
+  id          String     @id @default(cuid())
+  roomId      String
+  displayName String
+  joinedAt    DateTime   @default(now())
+  room        Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  eventLog    EventLog[]
+
+  @@index([roomId])
+}
+
+model EventLog {
+  id            String       @id @default(cuid())
+  roomId        String
+  taskId        String?
+  participantId String?
+  eventType     EventType
+  payload       Json // snapshot of relevant fields at time of event
+  createdAt     DateTime     @default(now())
+  room          Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  task          Task?        @relation(fields: [taskId], references: [id])
+  participant   Participant? @relation(fields: [participantId], references: [id])
+
+  @@index([roomId, createdAt])
+  @@index([taskId])
+}
+
+enum EventType {
+  TASK_CREATED
+  TASK_CLAIMED
+  TASK_STARTED
+  TASK_COMPLETED
+  TASK_UNCLAIMED // lease expired or manual release
+  PARTICIPANT_JOINED
+  PARTICIPANT_LEFT
+}

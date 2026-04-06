@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@taskpool/types": ["../../packages/types/src/index.ts"],
+      "@taskpool/db": ["../../packages/db/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}
