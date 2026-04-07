@@ -5,10 +5,12 @@ import { trpc } from "@/lib/trpc";
 
 interface AddTaskFormProps {
   eventId: string;
+  participantId: string | null;
   onAdded: () => void;
 }
 
-export function AddTaskForm({ eventId, onAdded }: AddTaskFormProps) {
+export function AddTaskForm({ eventId, participantId, onAdded }: AddTaskFormProps) {
+  if (!participantId) return null;
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -15,7 +16,6 @@ import type { TaskStatus } from "@taskpool/types";
 import { TaskCard, type TaskCardTask } from "@/components/TaskCard";
 import { AddTaskForm } from "@/components/AddTaskForm";
 import { PresenceStrip } from "@/components/PresenceStrip";
-import { JoinModal } from "@/components/JoinModal";
 import { Toaster } from "@/components/Toaster";
 import { useToast } from "@/lib/useToast";
 import { trpc } from "@/lib/trpc";
@@ -65,9 +65,10 @@ function DroppableColumn({
 }
 
 export default function EventBoardPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const eventId = params.id;
-  const [joinOpen, setJoinOpen] = useState(false);
   const [participantId, setParticipantId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeTask, setActiveTask] = useState<TaskCardTask | null>(null);
   const [overColumn, setOverColumn] = useState<TaskStatus | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -81,11 +82,19 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     const stored = localStorage.getItem(`taskpool:participantId:${eventId}`);
-    if (stored) setParticipantId(stored);
-  }, [eventId]);
+    if (stored) {
+      setParticipantId(stored);
+      setDisplayName(localStorage.getItem(`taskpool:displayName:${eventId}`));
+    } else {
+      router.replace(`/event/${eventId}/join`);
+    }
+  }, [eventId, router]);
 
   const handleCopyLink = () => {
-    void navigator.clipboard.writeText(window.location.href).then(() => {
+    const url = participantId
+      ? `${window.location.origin}/event/${eventId}/join?invitedBy=${participantId}`
+      : `${window.location.origin}/event/${eventId}/join`;
+    void navigator.clipboard.writeText(url).then(() => {
       setLinkCopied(true);
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => setLinkCopied(false), 2000);
@@ -177,17 +186,6 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {joinOpen && (
-        <JoinModal
-          eventId={eventId}
-          onJoined={(id) => {
-            setParticipantId(id);
-            setJoinOpen(false);
-            toast("Joined the event!", "success");
-          }}
-          onClose={() => setJoinOpen(false)}
-        />
-      )}
       <Toaster toasts={toasts} onDismiss={dismiss} />
 
       {/* Header */}
@@ -220,10 +218,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
               </>
             )}
           </button>
-          <PresenceStrip
-            onJoin={() => setJoinOpen(true)}
-            hasJoined={participantId !== null}
-          />
+          <PresenceStrip displayName={displayName} />
         </div>
       </header>
 
@@ -264,6 +259,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
               {status === "UNCLAIMED" && (
                 <AddTaskForm
                   eventId={eventId}
+                  participantId={participantId}
                   onAdded={() => toast("Task added!", "success")}
                 />
               )}

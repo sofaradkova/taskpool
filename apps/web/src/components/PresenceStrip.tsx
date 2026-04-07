@@ -29,14 +29,12 @@ function colorFor(id: string) {
 }
 
 interface PresenceStripProps {
-  onJoin: () => void;
-  hasJoined?: boolean;
+  displayName: string | null;
 }
 
-export function PresenceStrip({ onJoin, hasJoined = false }: PresenceStripProps) {
+export function PresenceStrip({ displayName }: PresenceStripProps) {
   return (
     <div className="flex items-center gap-3">
-      {/* Avatars */}
       <div className="flex -space-x-2">
         {SAMPLE_PARTICIPANTS.map((p) => (
           <div
@@ -49,17 +47,8 @@ export function PresenceStrip({ onJoin, hasJoined = false }: PresenceStripProps)
         ))}
       </div>
 
-      <span className="text-xs text-gray-400">
-        {SAMPLE_PARTICIPANTS.length} online
-      </span>
-
-      {!hasJoined && (
-        <button
-          onClick={onJoin}
-          className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
-        >
-          Join
-        </button>
+      {displayName && (
+        <span className="text-sm font-medium text-gray-700">{displayName}</span>
       )}
     </div>
   );
