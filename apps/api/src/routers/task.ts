@@ -7,31 +7,31 @@ export const taskRouter = router({
   create: publicProcedure
     .input(
       z.object({
-        roomId: z.string().cuid(),
+        eventId: z.string().cuid(),
         title: z.string().min(1).max(200),
         description: z.string().max(1000).optional(),
       })
     )
     .mutation(async ({ input }) => {
       const room = await prisma.room.findUnique({
-        where: { id: input.roomId },
+        where: { id: input.eventId },
         select: { id: true },
       });
       if (!room) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Room not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
 
       const task = await prisma.$transaction(async (tx) => {
         const t = await tx.task.create({
           data: {
-            roomId: input.roomId,
+            roomId: input.eventId,
             title: input.title,
             description: input.description ?? null,
           },
         });
         await tx.eventLog.create({
           data: {
-            roomId: input.roomId,
+            roomId: input.eventId,
             taskId: t.id,
             eventType: "TASK_CREATED",
             payload: { title: t.title, description: t.description },

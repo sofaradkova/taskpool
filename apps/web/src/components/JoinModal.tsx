@@ -4,25 +4,25 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 interface JoinModalProps {
-  roomId: string;
+  eventId: string;
   onJoined: (participantId: string, displayName: string) => void;
   onClose: () => void;
 }
 
-export function JoinModal({ roomId, onJoined, onClose }: JoinModalProps) {
+export function JoinModal({ eventId, onJoined, onClose }: JoinModalProps) {
   const [displayName, setDisplayName] = useState("");
 
   const join = trpc.participant.join.useMutation({
     onSuccess: (participant) => {
-      localStorage.setItem(`taskpool:participantId:${roomId}`, participant.id);
-      localStorage.setItem(`taskpool:displayName:${roomId}`, participant.displayName);
+      localStorage.setItem(`taskpool:participantId:${eventId}`, participant.id);
+      localStorage.setItem(`taskpool:displayName:${eventId}`, participant.displayName);
       onJoined(participant.id, participant.displayName);
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    join.mutate({ roomId, displayName: displayName.trim() });
+    join.mutate({ eventId, displayName: displayName.trim() });
   };
 
   return (
@@ -34,7 +34,7 @@ export function JoinModal({ roomId, onJoined, onClose }: JoinModalProps) {
         className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold">Join this room</h2>
+        <h2 className="text-lg font-semibold">Join this event</h2>
         <p className="mt-1 text-sm text-gray-500">
           Choose a display name that others on the board will see.
         </p>

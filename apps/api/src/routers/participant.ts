@@ -7,26 +7,26 @@ export const participantRouter = router({
   join: publicProcedure
     .input(
       z.object({
-        roomId: z.string().cuid(),
+        eventId: z.string().cuid(),
         displayName: z.string().min(1).max(50),
       })
     )
     .mutation(async ({ input }) => {
       const room = await prisma.room.findUnique({
-        where: { id: input.roomId },
+        where: { id: input.eventId },
         select: { id: true },
       });
       if (!room) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Room not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
 
       const participant = await prisma.$transaction(async (tx) => {
         const p = await tx.participant.create({
-          data: { roomId: input.roomId, displayName: input.displayName },
+          data: { roomId: input.eventId, displayName: input.displayName },
         });
         await tx.eventLog.create({
           data: {
-            roomId: input.roomId,
+            roomId: input.eventId,
             participantId: p.id,
             eventType: "PARTICIPANT_JOINED",
             payload: { displayName: input.displayName },

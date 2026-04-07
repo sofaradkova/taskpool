@@ -19,7 +19,8 @@ export interface TaskCardTask {
   status: TaskStatus;
   version: number;
   claimedBy: string | null;
-  roomId: string;
+  claimedByName: string | null;
+  eventId: string;
 }
 
 interface TaskCardProps {
@@ -42,7 +43,7 @@ export function TaskCard({ task, participantId, onToast }: TaskCardProps) {
 
   const claim = trpc.task.claim.useMutation({
     onSuccess: async () => {
-      await utils.room.get.invalidate({ roomId: task.roomId });
+      await utils.event.get.invalidate({ eventId: task.eventId });
       onToast("Task claimed!", "success");
     },
     onError: (err) => {
@@ -94,10 +95,10 @@ export function TaskCard({ task, participantId, onToast }: TaskCardProps) {
       )}
 
       {/* Claimed by */}
-      {task.claimedBy && (
+      {task.claimedByName && (
         <p className="mt-2 text-xs text-gray-400">
           Claimed by{" "}
-          <span className="font-medium text-gray-600">{task.claimedBy}</span>
+          <span className="font-medium text-gray-600">{task.claimedByName}</span>
         </p>
       )}
 

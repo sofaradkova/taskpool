@@ -6,10 +6,10 @@ export default function Home() {
       <h1 className="text-3xl font-bold">Taskpool</h1>
       <p className="mt-2 text-gray-500">Real-time collaborative task coordination</p>
       <Link
-        href="/room/new"
+        href="/event/new"
         className="mt-8 rounded-md bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
       >
-        Create a room
+        Create an event
       </Link>
     </main>
   );

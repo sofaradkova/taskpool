@@ -6,27 +6,31 @@ import { trpc } from "@/lib/trpc";
 import { useToast } from "@/lib/useToast";
 import { Toaster } from "@/components/Toaster";
 
-export default function NewRoomPage() {
+export default function NewEventPage() {
   const router = useRouter();
   const { toasts, toast, dismiss } = useToast();
 
   const [name, setName] = useState("");
+  const [creatorName, setCreatorName] = useState("");
   const [description, setDescription] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
 
-  const createRoom = trpc.room.create.useMutation({
-    onSuccess: (room) => {
-      router.push(`/room/${room.id}`);
+  const createEvent = trpc.event.create.useMutation({
+    onSuccess: ({ event, participantId }) => {
+      localStorage.setItem(`taskpool:participantId:${event.id}`, participantId);
+      localStorage.setItem(`taskpool:displayName:${event.id}`, creatorName.trim());
+      router.push(`/event/${event.id}`);
     },
     onError: (err) => {
-      toast(err.message ?? "Failed to create room", "error");
+      toast(err.message ?? "Failed to create event", "error");
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createRoom.mutate({
+    createEvent.mutate({
       name: name.trim(),
+      creatorName: creatorName.trim(),
       description: description.trim() || undefined,
       expiresAt: expiresAt ? new Date(expiresAt) : undefined,
     });
@@ -35,7 +39,7 @@ export default function NewRoomPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold">Create a room</h1>
+        <h1 className="text-2xl font-bold">Create an event</h1>
         <p className="mt-1 text-sm text-gray-500">
           Set up a shared board for your group event.
         </p>
@@ -43,7 +47,7 @@ export default function NewRoomPage() {
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="name" className="text-sm font-medium">
-              Room name <span className="text-red-500">*</span>
+              Event name <span className="text-red-500">*</span>
             </label>
             <input
               id="name"
@@ -54,6 +58,24 @@ export default function NewRoomPage() {
               required
               className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black"
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="creatorName" className="text-sm font-medium">
+              Your name <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="creatorName"
+              type="text"
+              value={creatorName}
+              onChange={(e) => setCreatorName(e.target.value)}
+              placeholder="e.g. Alice"
+              required
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black"
+            />
+            <p className="text-xs text-gray-400">
+              This is what others on the board will see.
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -86,10 +108,10 @@ export default function NewRoomPage() {
 
           <button
             type="submit"
-            disabled={createRoom.isPending || !name.trim()}
+            disabled={createEvent.isPending || !name.trim() || !creatorName.trim()}
             className="mt-2 rounded-md bg-black px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {createRoom.isPending ? "Creating…" : "Create room"}
+            {createEvent.isPending ? "Creating…" : "Create event"}
           </button>
         </form>
       </div>

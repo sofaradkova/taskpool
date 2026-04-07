@@ -4,11 +4,11 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 interface AddTaskFormProps {
-  roomId: string;
+  eventId: string;
   onAdded: () => void;
 }
 
-export function AddTaskForm({ roomId, onAdded }: AddTaskFormProps) {
+export function AddTaskForm({ eventId, onAdded }: AddTaskFormProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -17,7 +17,7 @@ export function AddTaskForm({ roomId, onAdded }: AddTaskFormProps) {
 
   const createTask = trpc.task.create.useMutation({
     onSuccess: async () => {
-      await utils.room.get.invalidate({ roomId });
+      await utils.event.get.invalidate({ eventId });
       setTitle("");
       setDescription("");
       setOpen(false);
@@ -28,7 +28,7 @@ export function AddTaskForm({ roomId, onAdded }: AddTaskFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createTask.mutate({
-      roomId,
+      eventId,
       title: title.trim(),
       description: description.trim() || undefined,
     });
