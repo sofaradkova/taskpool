@@ -31,6 +31,8 @@ interface TaskCardProps {
 
 export function TaskCard({ task, participantId, onToast }: TaskCardProps) {
   const badge = STATUS_BADGE[task.status];
+  const isOwned = task.claimedBy === participantId;
+  const isGrayed = task.status !== "UNCLAIMED" && !isOwned;
   const utils = trpc.useUtils();
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -75,11 +77,9 @@ export function TaskCard({ task, participantId, onToast }: TaskCardProps) {
       style={style}
       {...(task.status !== "UNCLAIMED" ? listeners : {})}
       {...(task.status !== "UNCLAIMED" ? attributes : {})}
-      className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${
-        task.claimedBy === participantId && task.status !== "UNCLAIMED"
-          ? "cursor-grab active:cursor-grabbing"
-          : ""
-      }`}
+      className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-opacity ${
+        isGrayed ? "opacity-40" : ""
+      } ${isOwned && task.status !== "UNCLAIMED" ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       {/* Title + badge */}
       <div className="flex items-start justify-between gap-2">
@@ -98,7 +98,9 @@ export function TaskCard({ task, participantId, onToast }: TaskCardProps) {
       {task.claimedByName && (
         <p className="mt-2 text-xs text-gray-400">
           Claimed by{" "}
-          <span className="font-medium text-gray-600">{task.claimedByName}</span>
+          <span className="font-medium text-gray-600">
+            {isOwned ? "you" : task.claimedByName}
+          </span>
         </p>
       )}
 
