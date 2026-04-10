@@ -16,15 +16,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         httpBatchLink({
           url: `${API_URL}/trpc`,
           headers() {
-            // Find a token for whichever room the user is currently in.
-            // Tokens are stored as taskpool:token:<eventId> — scan for any match.
             if (typeof window === "undefined") return {};
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key?.startsWith("taskpool:token:")) {
-                const token = localStorage.getItem(key);
-                if (token) return { Authorization: `Bearer ${token}` };
-              }
+            // Extract eventId from URL: /event/<eventId> or /event/<eventId>/...
+            const match = window.location.pathname.match(/\/event\/([^/]+)/);
+            if (match?.[1]) {
+              const token = localStorage.getItem(`taskpool:token:${match[1]}`);
+              if (token) return { Authorization: `Bearer ${token}` };
             }
             return {};
           },
