@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { publicProcedure, router } from "../trpc.js";
+import { protectedProcedure, router } from "../trpc.js";
 import { getIO } from "../socket.js";
 
 export const taskRouter = router({
-  create: publicProcedure
+  create: protectedProcedure
     .input(
       z.object({
         eventId: z.string().cuid(),
@@ -13,7 +13,11 @@ export const taskRouter = router({
         description: z.string().max(1000).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.participant.roomId !== input.eventId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not a member of this room." });
+      }
+
       const room = await prisma.room.findUnique({
         where: { id: input.eventId },
         select: { id: true },
@@ -48,7 +52,7 @@ export const taskRouter = router({
       return task;
     }),
 
-  claim: publicProcedure
+  claim: protectedProcedure
     .input(
       z.object({
         taskId: z.string().cuid(),
@@ -56,7 +60,10 @@ export const taskRouter = router({
         expectedVersion: z.number().int().min(0),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.participant.participantId !== input.participantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot claim as another participant." });
+      }
       const task = await prisma.$transaction(async (tx) => {
         // CAS update: only succeeds if version and status still match
         const result = await tx.task.updateMany({
@@ -112,7 +119,7 @@ export const taskRouter = router({
       return task;
     }),
 
-  updateStatus: publicProcedure
+  updateStatus: protectedProcedure
     .input(
       z.object({
         taskId: z.string().cuid(),
@@ -122,7 +129,10 @@ export const taskRouter = router({
         expectedVersion: z.number().int().min(0),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.participant.participantId !== input.participantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot update status as another participant." });
+      }
       // Which statuses can transition into each target
       const VALID_SOURCES: Record<string, string[]> = {
         UNCLAIMED:    ["CLAIMED", "IN_PROGRESS", "DONE"],

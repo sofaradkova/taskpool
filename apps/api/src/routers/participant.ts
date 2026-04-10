@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import jwt from "jsonwebtoken";
 import { prisma } from "../prisma.js";
 import { publicProcedure, router } from "../trpc.js";
 
@@ -35,6 +36,14 @@ export const participantRouter = router({
         return p;
       });
 
-      return participant;
+      const secret = process.env.JWT_SECRET;
+      if (!secret) throw new Error("JWT_SECRET not set");
+      const token = jwt.sign(
+        { participantId: participant.id, roomId: input.eventId },
+        secret,
+        { expiresIn: "14d" },
+      );
+
+      return { participant, token };
     }),
 });

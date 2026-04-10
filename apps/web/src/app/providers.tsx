@@ -12,7 +12,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const [trpcClient] = useState(() =>
     trpc.createClient({
-      links: [httpBatchLink({ url: `${API_URL}/trpc` })],
+      links: [
+        httpBatchLink({
+          url: `${API_URL}/trpc`,
+          headers() {
+            // Find a token for whichever room the user is currently in.
+            // Tokens are stored as taskpool:token:<eventId> — scan for any match.
+            if (typeof window === "undefined") return {};
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key?.startsWith("taskpool:token:")) {
+                const token = localStorage.getItem(key);
+                if (token) return { Authorization: `Bearer ${token}` };
+              }
+            }
+            return {};
+          },
+        }),
+      ],
     })
   );
 

@@ -23,9 +23,10 @@ export default function JoinPage({ params }: { params: { id: string } }) {
   );
 
   const join = trpc.participant.join.useMutation({
-    onSuccess: (participant) => {
+    onSuccess: ({ participant, token }) => {
       localStorage.setItem(`taskpool:participantId:${eventId}`, participant.id);
       localStorage.setItem(`taskpool:displayName:${eventId}`, participant.displayName);
+      localStorage.setItem(`taskpool:token:${eventId}`, token);
       router.push(`/event/${eventId}`);
     },
   });

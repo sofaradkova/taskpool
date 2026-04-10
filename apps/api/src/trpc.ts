@@ -1,16 +1,36 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import { Prisma } from "@prisma/client";
+import jwt from "jsonwebtoken";
+
+export interface ParticipantToken {
+  participantId: string;
+  roomId: string;
+}
 
 // Keep req/res available to procedures without leaking Fastify's types
 // into the shared AppRouter type that the frontend imports.
 export interface Context {
   req: CreateFastifyContextOptions["req"];
   res: CreateFastifyContextOptions["res"];
+  participant: ParticipantToken | null;
 }
 
 export function createContext({ req, res }: CreateFastifyContextOptions): Context {
-  return { req, res };
+  const auth = req.headers.authorization;
+  let participant: ParticipantToken | null = null;
+
+  if (auth?.startsWith("Bearer ")) {
+    try {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) throw new Error("JWT_SECRET not set");
+      participant = jwt.verify(auth.slice(7), secret) as ParticipantToken;
+    } catch {
+      // Invalid or expired token — participant stays null
+    }
+  }
+
+  return { req, res, participant };
 }
 
 // Map Prisma errors to the appropriate TRPCError code.
@@ -75,3 +95,14 @@ export const router = t.router;
 
 // All procedures run through the Prisma error mapper automatically.
 export const publicProcedure = t.procedure.use(prismaErrorMiddleware);
+
+// Procedures that require a valid JWT. Narrows ctx.participant from
+// ParticipantToken | null to ParticipantToken.
+const authMiddleware = t.middleware(({ ctx, next }) => {
+  if (!ctx.participant) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated." });
+  }
+  return next({ ctx: { ...ctx, participant: ctx.participant } });
+});
+
+export const protectedProcedure = publicProcedure.use(authMiddleware);

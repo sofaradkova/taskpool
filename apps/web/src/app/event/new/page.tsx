@@ -16,9 +16,10 @@ export default function NewEventPage() {
   const [expiresAt, setExpiresAt] = useState("");
 
   const createEvent = trpc.event.create.useMutation({
-    onSuccess: ({ event, participantId }) => {
+    onSuccess: ({ event, participantId, token }) => {
       localStorage.setItem(`taskpool:participantId:${event.id}`, participantId);
       localStorage.setItem(`taskpool:displayName:${event.id}`, creatorName.trim());
+      localStorage.setItem(`taskpool:token:${event.id}`, token);
       router.push(`/event/${event.id}`);
     },
     onError: (err) => {
