@@ -19,6 +19,7 @@ import { PresenceStrip } from "@/components/PresenceStrip";
 import { Toaster } from "@/components/Toaster";
 import { useToast } from "@/lib/useToast";
 import { trpc } from "@/lib/trpc";
+import { getSocket } from "@/lib/socket";
 
 const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "UNCLAIMED", label: "Unclaimed" },
@@ -69,6 +70,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
   const eventId = params.id;
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [onlineParticipants, setOnlineParticipants] = useState<{ id: string; displayName: string }[]>([]);
   const [activeTask, setActiveTask] = useState<TaskCardTask | null>(null);
   const [overColumn, setOverColumn] = useState<TaskStatus | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -79,6 +81,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
       toast(message, variant),
     [toast],
   );
+  const utils = trpc.useUtils();
 
   useEffect(() => {
     const stored = localStorage.getItem(`taskpool:participantId:${eventId}`);
@@ -89,6 +92,104 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
       router.replace(`/event/${eventId}/join`);
     }
   }, [eventId, router]);
+
+  // Connect socket and join the event room
+  useEffect(() => {
+    if (!participantId) return;
+
+    const socket = getSocket();
+    socket.connect();
+    socket.emit("join_room", { eventId, participantId });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [eventId, participantId]);
+
+  // Subscribe to real-time events and patch local cache
+  useEffect(() => {
+    if (!participantId) return;
+
+    const socket = getSocket();
+
+    const patchTask = (taskId: string, patch: Record<string, unknown>) => {
+      utils.event.get.setData({ eventId }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          tasks: old.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
+        };
+      });
+    };
+
+    socket.on("task:created", ({ task }) => {
+      utils.event.get.setData({ eventId }, (old) => {
+        if (!old) return old;
+        return { ...old, tasks: [...old.tasks, task as never] };
+      });
+    });
+
+    socket.on("task:claimed", ({ taskId, participantId: claimedBy, version, leaseExpiresAt }) => {
+      patchTask(taskId, { status: "CLAIMED", claimedBy, version, leaseExpiresAt });
+    });
+
+    socket.on("task:started", ({ taskId, version }) => {
+      patchTask(taskId, { status: "IN_PROGRESS", version });
+    });
+
+    socket.on("task:completed", ({ taskId, version }) => {
+      patchTask(taskId, { status: "DONE", version });
+    });
+
+    socket.on("task:unclaimed", ({ taskId }) => {
+      patchTask(taskId, { status: "UNCLAIMED", claimedBy: null, leaseExpiresAt: null });
+      // Invalidate to sync the version number we don't have in this payload
+      void utils.event.get.invalidate({ eventId });
+    });
+
+    socket.on("presence:snapshot", ({ participants }) => {
+      setOnlineParticipants(participants);
+    });
+
+    socket.on("participant:joined", ({ participantId: pid, displayName: name }) => {
+      setOnlineParticipants((prev) =>
+        prev.some((p) => p.id === pid) ? prev : [...prev, { id: pid, displayName: name }],
+      );
+      utils.event.get.setData({ eventId }, (old) => {
+        if (!old) return old;
+        if (old.participants.some((p) => p.id === pid)) return old;
+        return {
+          ...old,
+          participants: [
+            ...old.participants,
+            { id: pid, displayName: name, roomId: eventId, joinedAt: new Date().toISOString() },
+          ],
+        };
+      });
+    });
+
+    socket.on("participant:left", ({ participantId: pid }) => {
+      setOnlineParticipants((prev) => prev.filter((p) => p.id !== pid));
+      utils.event.get.setData({ eventId }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          participants: old.participants.filter((p) => p.id !== pid),
+        };
+      });
+    });
+
+    return () => {
+      socket.off("task:created");
+      socket.off("task:claimed");
+      socket.off("task:started");
+      socket.off("task:completed");
+      socket.off("task:unclaimed");
+      socket.off("presence:snapshot");
+      socket.off("participant:joined");
+      socket.off("participant:left");
+    };
+  }, [eventId, participantId, utils]);
 
   const handleCopyLink = () => {
     const url = participantId
@@ -106,7 +207,6 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
     { retry: false },
   );
 
-  const utils = trpc.useUtils();
   const updateStatus = trpc.task.updateStatus.useMutation({
     onSuccess: () => {
       void utils.event.get.invalidate({ eventId });
@@ -218,7 +318,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
               </>
             )}
           </button>
-          <PresenceStrip displayName={displayName} />
+          <PresenceStrip displayName={displayName} participants={onlineParticipants} />
         </div>
       </header>
 
