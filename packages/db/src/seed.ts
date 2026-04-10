@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   ]);
 
   console.log(`Seeded room: ${room.id} — "${room.name}"`);
-  console.log(`Participants: ${room.participants.map((p) => p.displayName).join(", ")}`);
+  console.log(`Participants: ${room.participants.map((p: { displayName: string }) => p.displayName).join(", ")}`);
   console.log("Tasks: Rent the moving truck, Pack the kitchen, Confirm elevator booking");
 }
 

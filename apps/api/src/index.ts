@@ -15,7 +15,9 @@ const app = Fastify({ logger: true });
 const io = await createSocketServer(app.server);
 registerSocketHandlers(io);
 
-await app.register(cors, { origin: "http://localhost:3000" });
+await app.register(cors, {
+  origin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
+});
 
 await app.register(fastifyTRPCPlugin, {
   prefix: "/trpc",

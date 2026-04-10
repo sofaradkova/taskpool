@@ -1,7 +1,0 @@
-# Copy to terraform.tfvars and fill in values (never commit terraform.tfvars)
-project_id      = "your-gcp-project-id"
-region          = "us-central1"
-zone            = "us-central1-a"
-db_tier         = "db-g1-small"
-db_password     = "change-me"
-redis_memory_gb = 1

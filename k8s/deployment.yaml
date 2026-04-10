@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskpool-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: taskpool-api
+  template:
+    metadata:
+      labels:
+        app: taskpool-api
+    spec:
+      imagePullSecrets:
+        - name: artifact-registry-key
+      initContainers:
+        - name: migrate
+          image: IMAGE_PLACEHOLDER  # replaced by deploy script
+          command: ["node", "apps/api/dist/apps/api/src/migrate.js"]
+          envFrom:
+            - secretRef:
+                name: taskpool-api-secrets
+      containers:
+        - name: api
+          image: IMAGE_PLACEHOLDER  # replaced by deploy script
+          ports:
+            - containerPort: 3001
+          envFrom:
+            - secretRef:
+                name: taskpool-api-secrets
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
