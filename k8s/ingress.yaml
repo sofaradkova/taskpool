@@ -1,0 +1,28 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: taskpool-cert
+spec:
+  domains:
+    - taskpool.duckdns.org
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: taskpool-api-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: taskpool-api-ip
+    networking.gke.io/managed-certificates: taskpool-cert
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+    - host: taskpool.duckdns.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: taskpool-api-svc
+                port:
+                  number: 80

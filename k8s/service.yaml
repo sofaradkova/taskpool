@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: taskpool-api-svc
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: taskpool-api
   ports:

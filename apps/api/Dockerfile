@@ -29,4 +29,4 @@ RUN pnpm --filter @taskpool/db exec prisma generate
 RUN pnpm --filter @taskpool/api build
 
 EXPOSE 3001
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["node", "apps/api/dist/apps/api/src/index.js"]
