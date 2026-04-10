@@ -65,6 +65,6 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  join_room: (payload: { roomId: string; participantId: string }) => void;
+  join_room: (payload: { eventId: string; participantId: string }) => void;
   heartbeat: () => void;
 }

@@ -6,8 +6,14 @@ import {
 } from "@trpc/server/adapters/fastify";
 import { createContext } from "./trpc.js";
 import { appRouter, type AppRouter } from "./routers/index.js";
+import { createSocketServer } from "./socket.js";
+import { registerSocketHandlers } from "./socketHandlers.js";
 
 const app = Fastify({ logger: true });
+
+// Socket.io must be attached before app.listen so it shares the HTTP server
+const io = await createSocketServer(app.server);
+registerSocketHandlers(io);
 
 await app.register(cors, { origin: "http://localhost:3000" });
 

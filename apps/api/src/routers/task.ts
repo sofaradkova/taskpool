@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { publicProcedure, router } from "../trpc.js";
+import { getIO } from "../socket.js";
 
 export const taskRouter = router({
   create: publicProcedure
@@ -39,6 +40,10 @@ export const taskRouter = router({
         });
         return t;
       });
+
+      getIO()
+        .to(`room:${input.eventId}`)
+        .emit("task:created", { task: task as never });
 
       return task;
     }),
@@ -94,6 +99,15 @@ export const taskRouter = router({
 
         return updated;
       });
+
+      getIO()
+        .to(`room:${task.roomId}`)
+        .emit("task:claimed", {
+          taskId: task.id,
+          participantId: input.participantId,
+          version: task.version,
+          leaseExpiresAt: task.leaseExpiresAt!,
+        });
 
       return task;
     }),
@@ -172,6 +186,32 @@ export const taskRouter = router({
 
         return updated;
       });
+
+      const io = getIO();
+      const room = `room:${task.roomId}`;
+
+      if (input.status === "UNCLAIMED") {
+        io.to(room).emit("task:unclaimed", { taskId: task.id, reason: "manual" });
+      } else if (input.status === "CLAIMED") {
+        io.to(room).emit("task:claimed", {
+          taskId: task.id,
+          participantId: input.participantId,
+          version: task.version,
+          leaseExpiresAt: task.leaseExpiresAt!,
+        });
+      } else if (input.status === "IN_PROGRESS") {
+        io.to(room).emit("task:started", {
+          taskId: task.id,
+          participantId: input.participantId,
+          version: task.version,
+        });
+      } else if (input.status === "DONE") {
+        io.to(room).emit("task:completed", {
+          taskId: task.id,
+          participantId: input.participantId,
+          version: task.version,
+        });
+      }
 
       return task;
     }),
