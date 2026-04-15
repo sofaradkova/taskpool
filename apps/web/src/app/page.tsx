@@ -1,64 +1,5 @@
 import Link from "next/link";
-
-const MOCK_TASKS = [
-  { id: "1", col: "UNCLAIMED",   title: "Pick up folding tables",  assignee: null },
-  { id: "2", col: "UNCLAIMED",   title: "Buy paper plates & cups", assignee: null },
-  { id: "3", col: "CLAIMED",     title: "Set up tent in backyard", assignee: "Maya" },
-  { id: "4", col: "IN_PROGRESS", title: "Hang string lights",      assignee: "Jordan" },
-  { id: "5", col: "DONE",        title: "Send calendar invites",   assignee: "Alex" },
-];
-
-const COL_META: Record<string, { label: string; dot: string; labelColor: string }> = {
-  UNCLAIMED:   { label: "Unclaimed",   dot: "bg-[#79747E]", labelColor: "text-[#49454F]" },
-  CLAIMED:     { label: "Claimed",     dot: "bg-[#6750A4]", labelColor: "text-[#6750A4]" },
-  IN_PROGRESS: { label: "In Progress", dot: "bg-[#B45309]", labelColor: "text-[#B45309]" },
-  DONE:        { label: "Done",        dot: "bg-[#0F766E]", labelColor: "text-[#0F766E]" },
-};
-
-function MockTaskCard({ title, assignee, status }: { title: string; assignee: string | null; status: string }) {
-  const m = COL_META[status] ?? COL_META["UNCLAIMED"]!;
-  return (
-    <div className="rounded-2xl border border-[#ECE6F0] bg-white px-3.5 py-3">
-      <p className="text-[11px] font-semibold text-[#1C1B1F] leading-snug">{title}</p>
-      <div className="mt-2 flex items-center gap-1.5">
-        <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
-        <span className="text-[10px] text-[#79747E]">{assignee ?? "Unclaimed"}</span>
-      </div>
-    </div>
-  );
-}
-
-function MockBoard() {
-  const cols = ["UNCLAIMED", "CLAIMED", "IN_PROGRESS", "DONE"];
-  return (
-    <div className="pointer-events-none flex gap-3 overflow-hidden rounded-3xl border border-[#ECE6F0] bg-[#F7F2FA] p-4">
-      {cols.map((col) => {
-        const tasks = MOCK_TASKS.filter((t) => t.col === col);
-        const m = COL_META[col]!;
-        return (
-          <div key={col} className="flex w-40 flex-shrink-0 flex-col gap-2.5">
-            <div className="flex items-center gap-1.5 px-0.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
-              <span className={`text-[10px] font-semibold uppercase tracking-wide ${m.labelColor}`}>
-                {m.label}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {tasks.map((t) => (
-                <MockTaskCard key={t.id} title={t.title} assignee={t.assignee} status={t.col} />
-              ))}
-              {tasks.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-[#CAC4D0] py-5 text-center text-[10px] text-[#79747E]">
-                  No tasks
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+import Image from "next/image";
 
 const STEPS = [
   { number: "01", title: "Create an event",    description: "Name your event — a move, party, volunteer day, anything that needs hands." },
@@ -125,9 +66,16 @@ export default function Home() {
       </section>
 
       {/* Board preview */}
-      <section className="mx-auto w-full max-w-4xl px-8 pb-20">
-        <div className="overflow-x-auto">
-          <MockBoard />
+      <section className="mx-auto w-full max-w-5xl px-8 pb-20">
+        <div className="overflow-hidden rounded-3xl border border-[#ECE6F0] shadow-sm">
+          <Image
+            src="/board-preview.png"
+            alt="Taskpool board showing tasks in Unclaimed, Claimed, In Progress, and Done columns"
+            width={3024}
+            height={1186}
+            className="w-full"
+            priority
+          />
         </div>
         <p className="mt-3 text-center text-xs text-[#79747E]">
           Live board — task updates appear instantly for everyone in the room

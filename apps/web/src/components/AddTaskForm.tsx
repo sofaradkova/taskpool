@@ -18,12 +18,12 @@ export function AddTaskForm({ eventId, participantId, onAdded }: AddTaskFormProp
   const utils = trpc.useUtils();
 
   const createTask = trpc.task.create.useMutation({
-    onSuccess: async () => {
-      await utils.event.get.invalidate({ eventId });
+    onSuccess: () => {
       setTitle("");
       setDescription("");
       setOpen(false);
       onAdded();
+      void utils.event.get.invalidate({ eventId });
     },
   });
 
