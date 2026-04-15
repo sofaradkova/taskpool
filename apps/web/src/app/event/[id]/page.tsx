@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   DndContext,
   DragOverlay,
@@ -12,7 +13,9 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import type { TaskStatus } from "@taskpool/types";
+import type { TaskStatus, Task, Room, Participant } from "@taskpool/types";
+
+type EventData = Room & { tasks: Task[]; participants: Participant[] };
 import { TaskCard, type TaskCardTask } from "@/components/TaskCard";
 import { AddTaskForm } from "@/components/AddTaskForm";
 import { PresenceStrip } from "@/components/PresenceStrip";
@@ -21,11 +24,11 @@ import { useToast } from "@/lib/useToast";
 import { trpc } from "@/lib/trpc";
 import { getSocket } from "@/lib/socket";
 
-const COLUMNS: { status: TaskStatus; label: string }[] = [
-  { status: "UNCLAIMED", label: "Unclaimed" },
-  { status: "CLAIMED", label: "Claimed" },
-  { status: "IN_PROGRESS", label: "In Progress" },
-  { status: "DONE", label: "Done" },
+const COLUMNS: { status: TaskStatus; label: string; dot: string; labelColor: string }[] = [
+  { status: "UNCLAIMED",   label: "Unclaimed",   dot: "bg-[#79747E]", labelColor: "text-[#49454F]" },
+  { status: "CLAIMED",     label: "Claimed",     dot: "bg-[#6750A4]", labelColor: "text-[#6750A4]" },
+  { status: "IN_PROGRESS", label: "In Progress", dot: "bg-[#B45309]", labelColor: "text-[#B45309]" },
+  { status: "DONE",        label: "Done",        dot: "bg-[#0F766E]", labelColor: "text-[#0F766E]" },
 ];
 
 const VALID_TARGETS: Record<TaskStatus, TaskStatus[]> = {
@@ -38,25 +41,30 @@ const VALID_TARGETS: Record<TaskStatus, TaskStatus[]> = {
 function DroppableColumn({
   status,
   label,
+  dot,
+  labelColor,
   children,
   isOver,
 }: {
   status: TaskStatus;
   label: string;
+  dot: string;
+  labelColor: string;
   children: React.ReactNode;
   isOver: boolean;
 }) {
   const { setNodeRef } = useDroppable({ id: status });
 
   return (
-    <div className="flex w-72 flex-shrink-0 flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
+    <div className="flex min-w-0 flex-1 flex-col gap-3">
+      <div className="flex items-center gap-1.5 px-1">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        <span className={`text-xs font-semibold uppercase tracking-wide ${labelColor}`}>{label}</span>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex min-h-20 flex-col gap-2 rounded-lg p-1 transition-colors ${
-          isOver ? "bg-blue-50 ring-2 ring-blue-200" : ""
+        className={`flex min-h-24 flex-col gap-2 rounded-2xl p-2 transition-colors ${
+          isOver ? "bg-[#E8DEF8]/60 ring-2 ring-[#6750A4]/30" : "bg-[#F7F2FA]"
         }`}
       >
         {children}
@@ -77,8 +85,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toasts, toast, dismiss } = useToast();
   const handleToast = useCallback(
-    (message: string, variant: "success" | "error" | "info") =>
-      toast(message, variant),
+    (message: string, variant: "success" | "error" | "info") => toast(message, variant),
     [toast],
   );
   const utils = trpc.useUtils();
@@ -93,89 +100,65 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
     }
   }, [eventId, router]);
 
-  // Connect socket and join the event room
   useEffect(() => {
     if (!participantId) return;
-
     const socket = getSocket();
     socket.connect();
     socket.emit("join_room", { eventId, participantId });
-
-    return () => {
-      socket.disconnect();
-    };
+    return () => { socket.disconnect(); };
   }, [eventId, participantId]);
 
-  // Subscribe to real-time events and patch local cache
   useEffect(() => {
     if (!participantId) return;
-
     const socket = getSocket();
 
     const patchTask = (taskId: string, patch: Record<string, unknown>) => {
-      utils.event.get.setData({ eventId }, (old) => {
+      utils.event.get.setData({ eventId }, (old: EventData | undefined) => {
         if (!old) return old;
-        return {
-          ...old,
-          tasks: old.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
-        };
+        return { ...old, tasks: old.tasks.map((t: Task) => (t.id === taskId ? { ...t, ...patch } : t)) };
       });
     };
 
     socket.on("task:created", ({ task }) => {
-      utils.event.get.setData({ eventId }, (old) => {
+      utils.event.get.setData({ eventId }, (old: EventData | undefined) => {
         if (!old) return old;
-        return { ...old, tasks: [...old.tasks, task as never] };
+        return { ...old, tasks: [...old.tasks, task as Task] };
       });
     });
-
     socket.on("task:claimed", ({ taskId, participantId: claimedBy, version, leaseExpiresAt }) => {
       patchTask(taskId, { status: "CLAIMED", claimedBy, version, leaseExpiresAt });
     });
-
     socket.on("task:started", ({ taskId, version }) => {
       patchTask(taskId, { status: "IN_PROGRESS", version });
     });
-
     socket.on("task:completed", ({ taskId, version }) => {
       patchTask(taskId, { status: "DONE", version });
     });
-
     socket.on("task:unclaimed", ({ taskId }) => {
       patchTask(taskId, { status: "UNCLAIMED", claimedBy: null, leaseExpiresAt: null });
-      // Invalidate to sync the version number we don't have in this payload
       void utils.event.get.invalidate({ eventId });
     });
-
     socket.on("presence:snapshot", ({ participants }) => {
       setOnlineParticipants(participants);
     });
-
     socket.on("participant:joined", ({ participantId: pid, displayName: name }) => {
       setOnlineParticipants((prev) =>
         prev.some((p) => p.id === pid) ? prev : [...prev, { id: pid, displayName: name }],
       );
-      utils.event.get.setData({ eventId }, (old) => {
+      utils.event.get.setData({ eventId }, (old: EventData | undefined) => {
         if (!old) return old;
-        if (old.participants.some((p) => p.id === pid)) return old;
+        if (old.participants.some((p: Participant) => p.id === pid)) return old;
         return {
           ...old,
-          participants: [
-            ...old.participants,
-            { id: pid, displayName: name, roomId: eventId, joinedAt: new Date().toISOString() },
-          ],
+          participants: [...old.participants, { id: pid, displayName: name, roomId: eventId, joinedAt: new Date() }],
         };
       });
     });
-
     socket.on("participant:left", ({ participantId: pid }) => {
       setOnlineParticipants((prev) => prev.filter((p) => p.id !== pid));
-      utils.event.get.setData({ eventId }, (old) => {
+      utils.event.get.setData({ eventId }, (old: EventData | undefined) => {
         if (!old) return old;
-        return {
-          ...old,
-          participants: old.participants.filter((p) => p.id !== pid),
-        };
+        return { ...old, participants: old.participants.filter((p: Participant) => p.id !== pid) };
       });
     });
 
@@ -202,31 +185,20 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
     });
   };
 
-  const { data, isLoading, error } = trpc.event.get.useQuery(
-    { eventId },
-    { retry: false },
-  );
+  const { data, isLoading, error } = trpc.event.get.useQuery({ eventId }, { retry: false });
 
   const updateStatus = trpc.task.updateStatus.useMutation({
-    onSuccess: () => {
-      void utils.event.get.invalidate({ eventId });
-    },
+    onSuccess: () => { void utils.event.get.invalidate({ eventId }); },
     onError: (err) => {
       void utils.event.get.invalidate({ eventId });
       toast(err.message ?? "Failed to move task.", "error");
     },
   });
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  const participantNames = new Map(
-    (data?.participants ?? []).map((p) => [p.id, p.displayName]),
-  );
-
-  const tasksByStatus = (status: TaskStatus) =>
-    (data?.tasks ?? []).filter((t) => t.status === status);
+  const participantNames = new Map<string, string>((data?.participants ?? []).map((p: Participant) => [p.id, p.displayName]));
+  const tasksByStatus = (status: TaskStatus) => (data?.tasks ?? []).filter((t: Task) => t.status === status);
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = event.active.data.current?.task as TaskCardTask | undefined;
@@ -240,26 +212,16 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null);
     setOverColumn(null);
-
     const { active, over } = event;
     if (!over || !participantId) return;
-
     const task = active.data.current?.task as TaskCardTask | undefined;
     if (!task) return;
-
     const targetStatus = over.id as TaskStatus;
     if (!VALID_TARGETS[task.status]?.includes(targetStatus)) return;
-
-    utils.event.get.setData({ eventId }, (old) => {
+    utils.event.get.setData({ eventId }, (old: EventData | undefined) => {
       if (!old) return old;
-      return {
-        ...old,
-        tasks: old.tasks.map((t) =>
-          t.id === task.id ? { ...t, status: targetStatus } : t,
-        ),
-      };
+      return { ...old, tasks: old.tasks.map((t: Task) => t.id === task.id ? { ...t, status: targetStatus } : t) };
     });
-
     updateStatus.mutate({
       taskId: task.id,
       participantId,
@@ -270,7 +232,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-gray-500">
+      <div className="flex min-h-screen items-center justify-center bg-[#FFFBFE] text-sm text-[#79747E]">
         Loading board…
       </div>
     );
@@ -278,35 +240,49 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-red-500">
+      <div className="flex min-h-screen items-center justify-center bg-[#FFFBFE] text-sm text-red-500">
         {error?.message ?? "Event not found."}
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#FFFBFE]">
       <Toaster toasts={toasts} onDismiss={dismiss} />
 
       {/* Header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div>
-          <h1 className="text-lg font-semibold">{data.name}</h1>
-          {data.description && (
-            <p className="text-sm text-gray-500">{data.description}</p>
-          )}
+      <header className="flex items-center justify-between border-b border-[#ECE6F0] px-6 py-3.5">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#6750A4]">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="5" height="5" rx="1.5" fill="white" />
+                <rect x="9" y="2" width="5" height="5" rx="1.5" fill="white" opacity=".7" />
+                <rect x="2" y="9" width="5" height="5" rx="1.5" fill="white" opacity=".7" />
+                <rect x="9" y="9" width="5" height="5" rx="1.5" fill="white" opacity=".4" />
+              </svg>
+            </div>
+          </Link>
+          <div className="h-4 w-px bg-[#ECE6F0]" />
+          <div>
+            <h1 className="text-sm font-semibold text-[#1C1B1F]">{data.name}</h1>
+            {data.description && (
+              <p className="text-xs text-[#79747E]">{data.description}</p>
+            )}
+          </div>
         </div>
+
         <div className="flex items-center gap-3">
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-full border border-[#CAC4D0] px-3.5 py-1.5 text-xs font-medium text-[#49454F] transition-colors hover:bg-[#F3EDF7]"
           >
             {linkCopied ? (
               <>
-                <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg className="h-3.5 w-3.5 text-[#0F766E]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M3 8l3.5 3.5L13 4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span className="text-green-600">Copied!</span>
+                <span className="text-[#0F766E]">Copied!</span>
               </>
             ) : (
               <>
@@ -314,7 +290,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
                   <rect x="5" y="5" width="8" height="8" rx="1" strokeLinejoin="round" />
                   <path d="M11 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v7a1 1 0 001 1h2" strokeLinecap="round" />
                 </svg>
-                Copy invite link
+                Invite
               </>
             )}
           </button>
@@ -329,30 +305,30 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto p-6">
-          {COLUMNS.map(({ status, label }) => (
+        <div className="flex flex-1 gap-4 p-6">
+          {COLUMNS.map(({ status, label, dot, labelColor }) => (
             <DroppableColumn
               key={status}
               status={status}
               label={label}
+              dot={dot}
+              labelColor={labelColor}
               isOver={overColumn === status}
             >
-              {tasksByStatus(status).map((task) => (
+              {tasksByStatus(status).map((task: Task) => (
                 <TaskCard
                   key={task.id}
                   task={{
                     ...task,
                     eventId,
-                    claimedByName: task.claimedBy
-                      ? (participantNames.get(task.claimedBy) ?? null)
-                      : null,
+                    claimedByName: task.claimedBy ? (participantNames.get(task.claimedBy) ?? null) : null,
                   }}
                   participantId={participantId}
                   onToast={handleToast}
                 />
               ))}
               {tasksByStatus(status).length === 0 && status !== "UNCLAIMED" && (
-                <p className="rounded-md border border-dashed border-gray-200 py-6 text-center text-xs text-gray-400">
+                <p className="rounded-2xl border border-dashed border-[#CAC4D0] py-6 text-center text-xs text-[#79747E]">
                   No tasks
                 </p>
               )}
@@ -369,10 +345,10 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
 
         <DragOverlay dropAnimation={null}>
           {activeTask && (
-            <div className="w-72 rotate-1 rounded-lg border border-gray-200 bg-white p-4 shadow-xl opacity-95">
-              <p className="text-sm font-medium">{activeTask.title}</p>
+            <div className="rotate-1 rounded-2xl border border-[#ECE6F0] bg-white p-4 shadow-xl opacity-95">
+              <p className="text-sm font-semibold text-[#1C1B1F]">{activeTask.title}</p>
               {activeTask.description && (
-                <p className="mt-1 text-xs text-gray-500">{activeTask.description}</p>
+                <p className="mt-1 text-xs text-[#79747E]">{activeTask.description}</p>
               )}
             </div>
           )}

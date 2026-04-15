@@ -5,11 +5,11 @@ import { CSS } from "@dnd-kit/utilities";
 import type { TaskStatus } from "@taskpool/types";
 import { trpc } from "@/lib/trpc";
 
-const STATUS_BADGE: Record<TaskStatus, { label: string; className: string }> = {
-  UNCLAIMED: { label: "Unclaimed", className: "bg-gray-100 text-gray-600" },
-  CLAIMED: { label: "Claimed", className: "bg-yellow-100 text-yellow-700" },
-  IN_PROGRESS: { label: "In Progress", className: "bg-blue-100 text-blue-700" },
-  DONE: { label: "Done", className: "bg-green-100 text-green-700" },
+const STATUS_DOT: Record<TaskStatus, string> = {
+  UNCLAIMED:   "bg-[#79747E]",
+  CLAIMED:     "bg-[#6750A4]",
+  IN_PROGRESS: "bg-[#B45309]",
+  DONE:        "bg-[#0F766E]",
 };
 
 export interface TaskCardTask {
@@ -30,18 +30,15 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, participantId, onToast }: TaskCardProps) {
-  const badge = STATUS_BADGE[task.status];
   const isOwned = task.claimedBy === participantId;
   const isGrayed = task.status !== "UNCLAIMED" && !isOwned;
   const utils = trpc.useUtils();
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-      data: { task, participantId },
-      // Any non-UNCLAIMED card owned by this participant is draggable
-      disabled: task.status === "UNCLAIMED" || task.claimedBy !== participantId,
-    });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task, participantId },
+    disabled: task.status === "UNCLAIMED" || task.claimedBy !== participantId,
+  });
 
   const claim = trpc.task.claim.useMutation({
     onSuccess: async () => {
@@ -77,43 +74,30 @@ export function TaskCard({ task, participantId, onToast }: TaskCardProps) {
       style={style}
       {...(task.status !== "UNCLAIMED" ? listeners : {})}
       {...(task.status !== "UNCLAIMED" ? attributes : {})}
-      className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-opacity ${
+      className={`rounded-2xl border border-[#ECE6F0] bg-white p-3.5 transition-opacity ${
         isGrayed ? "opacity-40" : ""
       } ${isOwned && task.status !== "UNCLAIMED" ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
-      {/* Title + badge */}
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium leading-snug">{task.title}</p>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
-          {badge.label}
-        </span>
+      <div className="flex items-start gap-2">
+        <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[task.status]}`} />
+        <p className="text-sm font-medium leading-snug text-[#1C1B1F]">{task.title}</p>
       </div>
 
-      {/* Description */}
       {task.description && (
-        <p className="mt-1.5 text-xs text-gray-500">{task.description}</p>
+        <p className="mt-1.5 pl-3.5 text-xs text-[#79747E] leading-relaxed">{task.description}</p>
       )}
 
-      {/* Claimed by */}
       {task.claimedByName && (
-        <p className="mt-2 text-xs text-gray-400">
-          Claimed by{" "}
-          <span className="font-medium text-gray-600">
-            {isOwned ? "you" : task.claimedByName}
-          </span>
+        <p className="mt-2 pl-3.5 text-xs text-[#79747E]">
+          {isOwned ? "Claimed by you" : `Claimed by ${task.claimedByName}`}
         </p>
       )}
 
-      {/* Claim button — only on UNCLAIMED tasks */}
       {task.status === "UNCLAIMED" && (
         <button
           onClick={handleClaim}
           disabled={claim.isPending}
-          className={`mt-3 w-full rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            claim.isPending
-              ? "cursor-not-allowed bg-gray-200 text-gray-500"
-              : "bg-black text-white hover:bg-gray-800"
-          }`}
+          className="mt-3 w-full rounded-full bg-[#6750A4] py-1.5 text-xs font-semibold text-white hover:bg-[#5B4397] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
         >
           {claim.isPending ? "Claiming…" : "Claim"}
         </button>
