@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-taskpool
+  labels:
+    grafana_dashboard: "1"
+data:
+  taskpool.json: |
+    {
+      "title": "Taskpool",
+      "uid": "taskpool",
+      "schemaVersion": 38,
+      "refresh": "10s",
+      "time": { "from": "now-30m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate (req/s)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "sum by (procedure) (rate(trpc_request_duration_seconds_count[1m]))",
+            "legendFormat": "{{procedure}}"
+          }]
+        },
+        {
+          "id": 2,
+          "title": "Latency p50 / p95 / p99 (seconds)",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "histogram_quantile(0.50, sum by (le, procedure) (rate(trpc_request_duration_seconds_bucket[1m])))",
+              "legendFormat": "p50 {{procedure}}"
+            },
+            {
+              "datasource": "Prometheus",
+              "expr": "histogram_quantile(0.95, sum by (le, procedure) (rate(trpc_request_duration_seconds_bucket[1m])))",
+              "legendFormat": "p95 {{procedure}}"
+            },
+            {
+              "datasource": "Prometheus",
+              "expr": "histogram_quantile(0.99, sum by (le, procedure) (rate(trpc_request_duration_seconds_bucket[1m])))",
+              "legendFormat": "p99 {{procedure}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Claim Conflicts (total)",
+          "type": "stat",
+          "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 },
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "taskpool_claim_conflicts_total"
+          }],
+          "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }] } } }
+        },
+        {
+          "id": 5,
+          "title": "Active Participants",
+          "type": "stat",
+          "gridPos": { "x": 12, "y": 8, "w": 6, "h": 4 },
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "taskpool_active_participants"
+          }],
+          "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": 0 }] } } }
+        },
+        {
+          "id": 6,
+          "title": "Active Participants Over Time",
+          "type": "timeseries",
+          "gridPos": { "x": 18, "y": 8, "w": 6, "h": 4 },
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "taskpool_active_participants",
+            "legendFormat": "participants"
+          }]
+        },
+        {
+          "id": 7,
+          "title": "Error Rate (req/s)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "sum by (procedure) (rate(trpc_request_duration_seconds_count{status=\"error\"}[1m]))",
+            "legendFormat": "{{procedure}}"
+          }]
+        },
+        {
+          "id": 8,
+          "title": "Socket.io Connections",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "taskpool_socket_connections",
+            "legendFormat": "connections"
+          }]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: default
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards

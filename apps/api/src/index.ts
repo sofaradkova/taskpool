@@ -1,3 +1,4 @@
+import "./telemetry.js";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import {
@@ -8,6 +9,7 @@ import { createContext } from "./trpc.js";
 import { appRouter, type AppRouter } from "./routers/index.js";
 import { createSocketServer } from "./socket.js";
 import { registerSocketHandlers } from "./socketHandlers.js";
+import { register } from "./metrics.js";
 
 const app = Fastify({ logger: true });
 
@@ -29,6 +31,11 @@ await app.register(fastifyTRPCPlugin, {
 });
 
 app.get("/healthz", async () => ({ status: "ok" }));
+
+app.get("/metrics", async (_req, reply) => {
+  reply.header("Content-Type", register.contentType);
+  return reply.send(await register.metrics());
+});
 
 const start = async (): Promise<void> => {
   try {

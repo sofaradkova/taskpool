@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import { Prisma } from "@prisma/client";
 import jwt from "jsonwebtoken";
+import { trpcDuration } from "./metrics.js";
 
 export interface ParticipantToken {
   participantId: string;
@@ -91,10 +92,22 @@ const prismaErrorMiddleware = t.middleware(async ({ next }) => {
   }
 });
 
+const timingMiddleware = t.middleware(async ({ path, next }) => {
+  const end = trpcDuration.startTimer({ procedure: path });
+  try {
+    const result = await next();
+    end({ status: "ok" });
+    return result;
+  } catch (err) {
+    end({ status: "error" });
+    throw err;
+  }
+});
+
 export const router = t.router;
 
-// All procedures run through the Prisma error mapper automatically.
-export const publicProcedure = t.procedure.use(prismaErrorMiddleware);
+// All procedures run through timing + Prisma error mapper automatically.
+export const publicProcedure = t.procedure.use(timingMiddleware).use(prismaErrorMiddleware);
 
 // Procedures that require a valid JWT. Narrows ctx.participant from
 // ParticipantToken | null to ParticipantToken.

@@ -1,6 +1,7 @@
 import type { TypedIO } from "./socket.js";
 import { prisma } from "./prisma.js";
 import { getRedis } from "./redis.js";
+import { activePresence, socketConnections } from "./metrics.js";
 
 const PRESENCE_TTL = 90; // seconds
 
@@ -59,6 +60,9 @@ async function getPresenceSnapshot(
 
 export function registerSocketHandlers(io: TypedIO): void {
   io.on("connection", (socket) => {
+    socketConnections.inc();
+    socket.on("disconnect", () => socketConnections.dec());
+
     socket.on("join_room", async ({ eventId, participantId }) => {
       // Validate the participant belongs to this event
       const participant = await prisma.participant.findFirst({
@@ -90,6 +94,8 @@ export function registerSocketHandlers(io: TypedIO): void {
           },
         }),
       ]);
+
+      activePresence.inc();
 
       // Send current presence list only to the joining socket
       const snapshot = await getPresenceSnapshot(eventId);
@@ -135,6 +141,7 @@ export function registerSocketHandlers(io: TypedIO): void {
         }),
       ]);
 
+      activePresence.dec();
       io.to(room).emit("participant:left", { participantId });
     });
   });

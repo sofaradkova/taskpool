@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { protectedProcedure, router } from "../trpc.js";
 import { getIO } from "../socket.js";
+import { claimConflicts } from "../metrics.js";
 
 export const taskRouter = router({
   create: protectedProcedure
@@ -81,6 +82,7 @@ export const taskRouter = router({
         });
 
         if (result.count === 0) {
+          claimConflicts.inc();
           throw new TRPCError({
             code: "CONFLICT",
             message: "Task already claimed — someone got there first.",
