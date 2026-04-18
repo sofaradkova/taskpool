@@ -56,7 +56,7 @@ function DroppableColumn({
   const { setNodeRef } = useDroppable({ id: status });
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-3">
+    <div className="flex w-full flex-col gap-3 sm:min-w-0 sm:flex-1">
       <div className="flex items-center gap-1.5 px-1">
         <span className={`h-2 w-2 rounded-full ${dot}`} />
         <span className={`text-xs font-semibold uppercase tracking-wide ${labelColor}`}>{label}</span>
@@ -305,7 +305,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-3 overflow-x-auto p-3 sm:gap-4 sm:p-6 [&>*]:min-w-[220px] sm:[&>*]:min-w-0">
+        <div className="flex flex-1 flex-col gap-4 p-3 sm:flex-row sm:p-6">
           {COLUMNS.map(({ status, label, dot, labelColor }) => (
             <DroppableColumn
               key={status}
