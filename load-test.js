@@ -83,7 +83,8 @@ export default function () {
 
   sleep(0.5);
 
-  // 4. Claim tasks — this is where concurrency conflicts happen
+  // 4. Claim tasks and track updated versions for status transitions
+  const claimedTasks = [];
   for (const task of taskIds) {
     const claimRes = trpcMutation(
       "task.claim",
@@ -92,12 +93,53 @@ export default function () {
     );
     if (claimRes && claimRes.status === 200) {
       check(claimRes, { "task claimed": () => true });
+      try {
+        const claimBody = JSON.parse(claimRes.body);
+        const newVersion = claimBody.result?.data?.version;
+        if (newVersion !== undefined) {
+          claimedTasks.push({ id: task.id, version: newVersion });
+        }
+      } catch {}
     } else if (claimRes && claimRes.body && claimRes.body.includes("CONFLICT")) {
       conflicts.add(1);
     }
   }
 
-  // 5. Read the event board (GET query)
+  sleep(0.5);
+
+  // 5. Move claimed tasks to IN_PROGRESS
+  const inProgressTasks = [];
+  for (const task of claimedTasks) {
+    const startRes = trpcMutation(
+      "task.updateStatus",
+      { taskId: task.id, participantId: joinerId, status: "IN_PROGRESS", expectedVersion: task.version },
+      joinerToken
+    );
+    check(startRes, { "task started": (r) => r.status === 200 });
+    if (startRes && startRes.status === 200) {
+      try {
+        const startBody = JSON.parse(startRes.body);
+        const newVersion = startBody.result?.data?.version;
+        if (newVersion !== undefined) {
+          inProgressTasks.push({ id: task.id, version: newVersion });
+        }
+      } catch {}
+    }
+  }
+
+  sleep(0.5);
+
+  // 6. Mark tasks as DONE
+  for (const task of inProgressTasks) {
+    const doneRes = trpcMutation(
+      "task.updateStatus",
+      { taskId: task.id, participantId: joinerId, status: "DONE", expectedVersion: task.version },
+      joinerToken
+    );
+    check(doneRes, { "task completed": (r) => r.status === 200 });
+  }
+
+  // 7. Read the event board (GET query)
   const getRes = trpcQuery("event.get", { eventId });
   check(getRes, { "event fetched": (r) => r.status === 200 });
 
