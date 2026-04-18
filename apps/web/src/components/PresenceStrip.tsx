@@ -44,7 +44,7 @@ export function PresenceStrip({ displayName, participants }: PresenceStripProps)
         </div>
       )}
       {displayName && (
-        <span className="text-xs font-medium text-[#49454F]">{displayName}</span>
+        <span className="hidden text-xs font-medium text-[#49454F] sm:inline">{displayName}</span>
       )}
     </div>
   );

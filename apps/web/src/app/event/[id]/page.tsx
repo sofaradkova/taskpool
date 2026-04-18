@@ -251,9 +251,9 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
       <Toaster toasts={toasts} onDismiss={dismiss} />
 
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-[#ECE6F0] px-6 py-3.5">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2">
+      <header className="flex items-center justify-between border-b border-[#ECE6F0] px-3 py-3.5 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#6750A4]">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <rect x="2" y="2" width="5" height="5" rx="1.5" fill="white" />
@@ -263,19 +263,19 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
               </svg>
             </div>
           </Link>
-          <div className="h-4 w-px bg-[#ECE6F0]" />
-          <div>
-            <h1 className="text-sm font-semibold text-[#1C1B1F]">{data.name}</h1>
+          <div className="h-4 w-px shrink-0 bg-[#ECE6F0]" />
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-semibold text-[#1C1B1F]">{data.name}</h1>
             {data.description && (
-              <p className="text-xs text-[#79747E]">{data.description}</p>
+              <p className="hidden truncate text-xs text-[#79747E] sm:block">{data.description}</p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 rounded-full border border-[#CAC4D0] px-3.5 py-1.5 text-xs font-medium text-[#49454F] transition-colors hover:bg-[#F3EDF7]"
+            className="flex items-center gap-1.5 rounded-full border border-[#CAC4D0] px-3 py-1.5 text-xs font-medium text-[#49454F] transition-colors hover:bg-[#F3EDF7] sm:px-3.5"
           >
             {linkCopied ? (
               <>
@@ -305,7 +305,7 @@ export default function EventBoardPage({ params }: { params: { id: string } }) {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-4 p-6">
+        <div className="flex flex-1 gap-3 overflow-x-auto p-3 sm:gap-4 sm:p-6 [&>*]:min-w-[220px] sm:[&>*]:min-w-0">
           {COLUMNS.map(({ status, label, dot, labelColor }) => (
             <DroppableColumn
               key={status}

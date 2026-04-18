@@ -21,7 +21,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#FFFBFE]">
 
       {/* Nav */}
-      <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ECE6F0] bg-[#FFFBFE]/90 px-8 py-3.5 backdrop-blur">
+      <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ECE6F0] bg-[#FFFBFE]/90 px-4 py-3.5 backdrop-blur sm:px-8">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#6750A4]">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -36,8 +36,8 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-8 pt-20 pb-10 text-center">
-        <h1 className="text-5xl font-bold tracking-tight text-[#1C1B1F] sm:text-6xl leading-tight">
+      <section className="mx-auto flex w-full max-w-4xl flex-col items-center px-4 pt-12 pb-10 text-center sm:px-8 sm:pt-20">
+        <h1 className="text-4xl font-bold tracking-tight text-[#1C1B1F] sm:text-5xl lg:text-6xl leading-tight">
           Group events,{" "}
           <span className="text-[#6750A4]">zero chaos</span>
         </h1>
@@ -66,7 +66,7 @@ export default function Home() {
       </section>
 
       {/* Board preview */}
-      <section className="mx-auto w-full max-w-5xl px-8 pb-20">
+      <section className="mx-auto w-full max-w-5xl px-4 pb-16 sm:px-8 sm:pb-20">
         <div className="overflow-hidden rounded-3xl border border-[#ECE6F0] shadow-sm">
           <Image
             src="/board-preview.png"
@@ -83,7 +83,7 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="border-t border-[#ECE6F0] bg-[#F7F2FA] px-8 py-16">
+      <section id="how-it-works" className="border-t border-[#ECE6F0] bg-[#F7F2FA] px-4 py-12 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-4xl">
           <h2 className="mb-10 text-center text-2xl font-bold text-[#1C1B1F]">How it works</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -99,7 +99,7 @@ export default function Home() {
       </section>
 
       {/* Use cases */}
-      <section className="px-8 py-16">
+      <section className="px-4 py-12 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-4xl">
           <h2 className="mb-10 text-center text-2xl font-bold text-[#1C1B1F]">Built for real events</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -114,7 +114,7 @@ export default function Home() {
       </section>
 
       {/* CTA footer */}
-      <section className="border-t border-[#ECE6F0] px-8 py-16 text-center">
+      <section className="border-t border-[#ECE6F0] px-4 py-12 text-center sm:px-8 sm:py-16">
         <h2 className="mb-3 text-2xl font-bold text-[#1C1B1F]">Ready to coordinate?</h2>
         <p className="mb-7 text-sm text-[#49454F]">No account needed. Create an event and share the link.</p>
         <Link
