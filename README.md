@@ -58,11 +58,11 @@ The load test (`load-test.js`) uses [k6](https://k6.io) to simulate realistic co
 | Throughput | ~8.6 req/s |
 | Iterations completed | 95 |
 
-![Request rate](docs/request-rate-load-test.png)
+![Request rate](assets/request-rate-load-test.png)
 
 `task.updateStatus` (blue) dominates at ~4.1 req/s peak — expected, since each iteration calls it 6 times (3 tasks × 2 transitions: CLAIMED→IN_PROGRESS then IN_PROGRESS→DONE). `task.create` and `task.claim` follow at ~2 req/s. `event.create`, `participant.join`, and `event.get` run once per iteration and stay below 1 req/s.
 
-![Latency p50/p95/p99](docs/latency-load-test.png)
+![Latency p50/p95/p99](assets/latency-load-test.png)
 
 At 10 VUs all procedures sit below 1s. As load climbs the percentile lines fan out — p50 stays around 1s while p95 and p99 climb to 3.5–5s. Unlike the request rate (which peaks and drops), latency stays elevated for the remainder of the test. This is the DB connection pool staying saturated.
 
