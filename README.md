@@ -84,3 +84,4 @@ Run the load test:
 ```bash
 k6 run load-test.js
 ```
+Presentation: https://www.figma.com/deck/KTUJuWkuJYQwbunU2oSaU2/Distributed-Systems---Final?node-id=40-54&t=f8qWUzeBbCD5TUwE-1
